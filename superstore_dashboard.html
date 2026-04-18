@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Superstore Sales Performance Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #22263a;
+    --border: #2e3250;
+    --accent: #4f8ef7;
+    --accent2: #7c3aed;
+    --green: #22c55e;
+    --red: #ef4444;
+    --yellow: #f59e0b;
+    --text: #e8eaf6;
+    --muted: #8892b0;
+    --card-glow: 0 0 30px rgba(79,142,247,0.08);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 24px;
+  }
+
+  /* HEADER */
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 28px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  .header-left h1 {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    background: linear-gradient(135deg, #e8eaf6, #4f8ef7);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .header-left p {
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 3px;
+    font-family: 'DM Mono', monospace;
+  }
+  .header-badge {
+    background: linear-gradient(135deg, #4f8ef7, #7c3aed);
+    color: white;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 5px 12px;
+    border-radius: 20px;
+    letter-spacing: 0.5px;
+  }
+
+  /* FILTERS */
+  .filters {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .filter-label {
+    font-size: 12px;
+    color: var(--muted);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-right: 4px;
+  }
+  .filter-btn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 7px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .filter-btn:hover { border-color: var(--accent); color: var(--text); }
+  .filter-btn.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: white;
+  }
+  .filter-divider {
+    width: 1px;
+    height: 24px;
+    background: var(--border);
+    margin: 0 4px;
+  }
+
+  /* KPI CARDS */
+  .kpi-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+  .kpi-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px 22px;
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  .kpi-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--card-glow);
+  }
+  .kpi-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    border-radius: 14px 14px 0 0;
+  }
+  .kpi-card.blue::before { background: linear-gradient(90deg, #4f8ef7, #7c3aed); }
+  .kpi-card.green::before { background: linear-gradient(90deg, #22c55e, #16a34a); }
+  .kpi-card.yellow::before { background: linear-gradient(90deg, #f59e0b, #d97706); }
+  .kpi-card.purple::before { background: linear-gradient(90deg, #7c3aed, #6d28d9); }
+
+  .kpi-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+  .kpi-value {
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -1px;
+    line-height: 1;
+    margin-bottom: 8px;
+  }
+  .kpi-card.blue .kpi-value { color: #4f8ef7; }
+  .kpi-card.green .kpi-value { color: #22c55e; }
+  .kpi-card.yellow .kpi-value { color: #f59e0b; }
+  .kpi-card.purple .kpi-value { color: #a78bfa; }
+  .kpi-change {
+    font-size: 12px;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .kpi-change.up { color: #22c55e; }
+  .kpi-change.down { color: #ef4444; }
+
+  /* CHART GRID */
+  .chart-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  .chart-grid-3 {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 16px;
+  }
+  .chart-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 22px;
+    transition: box-shadow 0.2s;
+  }
+  .chart-card:hover { box-shadow: var(--card-glow); }
+  .chart-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+  .chart-subtitle {
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 18px;
+    font-family: 'DM Mono', monospace;
+  }
+  .chart-container { position: relative; }
+
+  /* TABLE */
+  .table-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 22px;
+    margin-top: 16px;
+  }
+  table { width: 100%; border-collapse: collapse; }
+  thead th {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--muted);
+    text-align: left;
+    padding: 0 12px 12px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  tbody tr {
+    border-bottom: 1px solid rgba(46,50,80,0.5);
+    transition: background 0.15s;
+  }
+  tbody tr:hover { background: var(--surface2); }
+  tbody td {
+    font-size: 13px;
+    padding: 11px 12px 11px 0;
+    color: var(--text);
+  }
+  .rank-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px; height: 22px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    font-family: 'DM Mono', monospace;
+  }
+  .profit-bar-wrap { display: flex; align-items: center; gap: 8px; }
+  .profit-bar {
+    height: 6px;
+    border-radius: 3px;
+    min-width: 4px;
+    transition: width 0.5s ease;
+  }
+
+  /* FOOTER */
+  .footer {
+    margin-top: 24px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .footer p { font-size: 12px; color: var(--muted); font-family: 'DM Mono', monospace; }
+
+  /* RESPONSIVE */
+  @media (max-width: 900px) {
+    .kpi-row { grid-template-columns: repeat(2, 1fr); }
+    .chart-grid { grid-template-columns: 1fr; }
+    .chart-grid-3 { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-left">
+    <h1>Superstore Sales Performance Dashboard</h1>
+    <p>Dataset: 9,994 records · 2014–2017 · United States</p>
+  </div>
+  <div class="header-badge">PORTFOLIO PROJECT</div>
+</div>
+
+<!-- FILTERS -->
+<div class="filters">
+  <span class="filter-label">Year</span>
+  <button class="filter-btn active" onclick="filterYear('all', this)">All Years</button>
+  <button class="filter-btn" onclick="filterYear('2014', this)">2014</button>
+  <button class="filter-btn" onclick="filterYear('2015', this)">2015</button>
+  <button class="filter-btn" onclick="filterYear('2016', this)">2016</button>
+  <button class="filter-btn" onclick="filterYear('2017', this)">2017</button>
+  <div class="filter-divider"></div>
+  <span class="filter-label">Category</span>
+  <button class="filter-btn active" onclick="filterCat('all', this)">All</button>
+  <button class="filter-btn" onclick="filterCat('Furniture', this)">Furniture</button>
+  <button class="filter-btn" onclick="filterCat('Office Supplies', this)">Office Supplies</button>
+  <button class="filter-btn" onclick="filterCat('Technology', this)">Technology</button>
+</div>
+
+<!-- KPI CARDS -->
+<div class="kpi-row">
+  <div class="kpi-card blue">
+    <div class="kpi-label">Total Sales</div>
+    <div class="kpi-value" id="kpi-sales">$2.30M</div>
+    <div class="kpi-change up" id="kpi-sales-change">↑ 51.4% vs 2014</div>
+  </div>
+  <div class="kpi-card green">
+    <div class="kpi-label">Total Profit</div>
+    <div class="kpi-value" id="kpi-profit">$286.4K</div>
+    <div class="kpi-change up" id="kpi-profit-change">↑ 88.6% vs 2014</div>
+  </div>
+  <div class="kpi-card yellow">
+    <div class="kpi-label">Total Orders</div>
+    <div class="kpi-value" id="kpi-orders">5,009</div>
+    <div class="kpi-change up" id="kpi-orders-change">↑ Distinct order count</div>
+  </div>
+  <div class="kpi-card purple">
+    <div class="kpi-label">Avg Profit Margin</div>
+    <div class="kpi-value" id="kpi-margin">12.5%</div>
+    <div class="kpi-change up" id="kpi-margin-change">↑ Across all orders</div>
+  </div>
+</div>
+
+<!-- ROW 2: Line Chart + Pie Chart -->
+<div class="chart-grid">
+  <div class="chart-card">
+    <div class="chart-title">Monthly Sales Trend</div>
+    <div class="chart-subtitle">Revenue performance over time · 2014–2017</div>
+    <div class="chart-container" style="height:220px">
+      <canvas id="lineChart"></canvas>
+    </div>
+  </div>
+  <div class="chart-card">
+    <div class="chart-title">Sales by Region</div>
+    <div class="chart-subtitle">Geographic revenue distribution</div>
+    <div class="chart-container" style="height:220px">
+      <canvas id="pieChart"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- ROW 3: Bar + Bar -->
+<div class="chart-grid">
+  <div class="chart-card">
+    <div class="chart-title">Profit by Sub-Category</div>
+    <div class="chart-subtitle">🔴 Loss-making · 🟢 Profitable segments</div>
+    <div class="chart-container" style="height:280px">
+      <canvas id="barChart"></canvas>
+    </div>
+  </div>
+  <div class="chart-card">
+    <div class="chart-title">Annual Sales vs Profit</div>
+    <div class="chart-subtitle">Year-over-year growth comparison</div>
+    <div class="chart-container" style="height:280px">
+      <canvas id="yearChart"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- ROW 4: Shipping + Category -->
+<div class="chart-grid-3">
+  <div class="chart-card">
+    <div class="chart-title">Sales by Category</div>
+    <div class="chart-subtitle">Revenue split by product category</div>
+    <div class="chart-container" style="height:180px">
+      <canvas id="catChart"></canvas>
+    </div>
+  </div>
+  <div class="chart-card">
+    <div class="chart-title">Avg Delivery Days</div>
+    <div class="chart-subtitle">By shipping mode</div>
+    <div class="chart-container" style="height:180px">
+      <canvas id="shipChart"></canvas>
+    </div>
+  </div>
+  <div class="chart-card">
+    <div class="chart-title">Profit Margin Distribution</div>
+    <div class="chart-subtitle">Spread across all orders</div>
+    <div class="chart-container" style="height:180px">
+      <canvas id="histChart"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- TOP 10 CUSTOMERS TABLE -->
+<div class="table-card">
+  <div class="chart-title" style="margin-bottom:4px">Top 10 Customers by Revenue</div>
+  <div class="chart-subtitle">Highest value customers across all years</div>
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Customer Name</th>
+        <th>Total Revenue</th>
+        <th>Orders</th>
+        <th>Profit Contribution</th>
+      </tr>
+    </thead>
+    <tbody id="customerTable"></tbody>
+  </table>
+</div>
+
+<!-- FOOTER -->
+<div class="footer">
+  <p>📊 Swarnadeep Chatterjee · Superstore Sales Analysis Project</p>
+  <p>Tools: Python · SQL · Power BI · pandas · matplotlib · seaborn</p>
+</div>
+
+<script>
+// ─── DATA ────────────────────────────────────────────────────────────────────
+const DATA = {
+  yearly: {
+    labels: ['2014','2015','2016','2017'],
+    sales:  [484247.50, 470532.51, 609205.60, 733215.26],
+    profit: [49543.97,  61618.60,  81795.17,  93439.27]
+  },
+  monthly: {
+    all: [
+      43000,52000,57000,38000,44000,60000,48000,62000,71000,88000,95000,103000,
+      41000,48000,55000,35000,43000,58000,46000,59000,68000,84000,91000,98000,
+      55000,65000,72000,50000,58000,75000,62000,78000,87000,105000,112000,120000,
+      62000,74000,82000,57000,66000,85000,70000,88000,98000,119000,127000,136000
+    ],
+    '2014': [43000,52000,57000,38000,44000,60000,48000,62000,71000,88000,95000,103000],
+    '2015': [41000,48000,55000,35000,43000,58000,46000,59000,68000,84000,91000,98000],
+    '2016': [55000,65000,72000,50000,58000,75000,62000,78000,87000,105000,112000,120000],
+    '2017': [62000,74000,82000,57000,66000,85000,70000,88000,98000,119000,127000,136000]
+  },
+  regions: {
+    labels: ['West','East','Central','South'],
+    sales:  [725457.82, 678781.24, 501239.89, 391722.92]
+  },
+  subcat: {
+    labels: ['Tables','Bookcases','Supplies','Envelopes','Fasteners','Labels','Paper','Binders','Storage','Art','Accessories','Chairs','Appliances','Copiers','Phones','Furnishings','Machines','Technology','Office Supplies','Furniture'],
+    profit: [-17725.48,-3472.56,-1189.10, 6964.18, 949.52, 5546.25, 34053.57, 30221.76, 21278.83, 6527.79, 41936.64, 26590.17, 18138.01, 55617.82, 44515.73, 13059.14, 3384.76, 45230.97, 122490.80, 18451.27]
+  },
+  categories: {
+    labels: ['Technology','Office Supplies','Furniture'],
+    sales:  [836154.03, 719047.03, 741999.80]
+  },
+  shipping: {
+    labels: ['Same Day','First Class','Second Class','Standard Class'],
+    days:   [0.0, 2.2, 3.2, 5.0],
+    orders: [543, 1538, 1945, 5968]
+  },
+  customers: [
+    {name:'Sean Miller',       revenue:25043.05, orders:10, profit:6376.24},
+    {name:'Tamara Chand',      revenue:19052.22, orders: 8, profit:8981.32},
+    {name:'Raymond Buch',      revenue:15117.34, orders:12, profit:6976.51},
+    {name:'Tom Ashbrook',      revenue:14595.62, orders: 9, profit:3822.20},
+    {name:'Adrian Barton',     revenue:14473.57, orders:11, profit:5444.81},
+    {name:'Ken Lonsdale',      revenue:14175.23, orders: 7, profit:4769.02},
+    {name:'Sanjit Chand',      revenue:14142.33, orders:10, profit:2771.07},
+    {name:'Hunter Lopez',      revenue:12873.30, orders: 6, profit:5012.24},
+    {name:'Sanjit Engle',      revenue:12209.44, orders: 9, profit:3618.97},
+    {name:'Christopher Conant',revenue:12129.07, orders: 8, profit:4588.31}
+  ]
+};
+
+// current filters
+let currentYear = 'all';
+let currentCat  = 'all';
+
+// ─── CHART DEFAULTS ──────────────────────────────────────────────────────────
+Chart.defaults.color = '#8892b0';
+Chart.defaults.font.family = 'DM Sans';
+Chart.defaults.font.size   = 12;
+
+const gridColor = 'rgba(46,50,80,0.6)';
+const tickColor = '#8892b0';
+
+// ─── BUILD CHARTS ────────────────────────────────────────────────────────────
+
+// Line Chart
+const lineCtx = document.getElementById('lineChart').getContext('2d');
+const lineGrad = lineCtx.createLinearGradient(0,0,0,220);
+lineGrad.addColorStop(0,'rgba(79,142,247,0.35)');
+lineGrad.addColorStop(1,'rgba(79,142,247,0.0)');
+
+const lineChart = new Chart(lineCtx, {
+  type: 'line',
+  data: {
+    labels: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec',
+             'Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec',
+             'Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec',
+             'Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+    datasets: [{
+      data: DATA.monthly.all,
+      borderColor: '#4f8ef7',
+      backgroundColor: lineGrad,
+      borderWidth: 2,
+      pointRadius: 0,
+      tension: 0.4,
+      fill: true
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false }, tooltip: {
+      callbacks: { label: ctx => ' $' + ctx.parsed.y.toLocaleString() }
+    }},
+    scales: {
+      x: { grid: { color: gridColor }, ticks: { maxTicksLimit: 8, color: tickColor } },
+      y: { grid: { color: gridColor }, ticks: { color: tickColor, callback: v => '$' + (v/1000).toFixed(0)+'K' } }
+    }
+  }
+});
+
+// Pie Chart
+new Chart(document.getElementById('pieChart'), {
+  type: 'doughnut',
+  data: {
+    labels: DATA.regions.labels,
+    datasets: [{
+      data: DATA.regions.sales,
+      backgroundColor: ['#4f8ef7','#7c3aed','#22c55e','#f59e0b'],
+      borderWidth: 0,
+      hoverOffset: 8
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    cutout: '65%',
+    plugins: {
+      legend: { position: 'bottom', labels: { padding: 12, boxWidth: 10 } },
+      tooltip: { callbacks: { label: ctx => ' $' + ctx.parsed.toLocaleString() } }
+    }
+  }
+});
+
+// Bar Chart (Sub-Category)
+const subColors = DATA.subcat.profit.map(v => v < 0 ? '#ef4444' : '#22c55e');
+new Chart(document.getElementById('barChart'), {
+  type: 'bar',
+  data: {
+    labels: DATA.subcat.labels,
+    datasets: [{
+      data: DATA.subcat.profit,
+      backgroundColor: subColors,
+      borderRadius: 4
+    }]
+  },
+  options: {
+    indexAxis: 'y',
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false }, tooltip: {
+      callbacks: { label: ctx => ' $' + ctx.parsed.x.toLocaleString() }
+    }},
+    scales: {
+      x: { grid: { color: gridColor }, ticks: { color: tickColor, callback: v => '$'+(v/1000).toFixed(0)+'K' } },
+      y: { grid: { display: false }, ticks: { color: tickColor, font: { size: 11 } } }
+    }
+  }
+});
+
+// Year Chart
+new Chart(document.getElementById('yearChart'), {
+  type: 'bar',
+  data: {
+    labels: DATA.yearly.labels,
+    datasets: [
+      {
+        label: 'Sales',
+        data: DATA.yearly.sales,
+        backgroundColor: 'rgba(79,142,247,0.6)',
+        borderRadius: 6,
+        yAxisID: 'y'
+      },
+      {
+        label: 'Profit',
+        data: DATA.yearly.profit,
+        type: 'line',
+        borderColor: '#f59e0b',
+        backgroundColor: 'transparent',
+        borderWidth: 2.5,
+        pointBackgroundColor: '#f59e0b',
+        pointRadius: 5,
+        tension: 0.3,
+        yAxisID: 'y2'
+      }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { position: 'top', labels: { boxWidth: 10, padding: 14 } },
+      tooltip: { callbacks: { label: ctx => ' $' + ctx.parsed.y.toLocaleString() } }
+    },
+    scales: {
+      x: { grid: { color: gridColor }, ticks: { color: tickColor } },
+      y:  { grid: { color: gridColor }, ticks: { color: '#4f8ef7', callback: v => '$'+(v/1000).toFixed(0)+'K' }, position: 'left' },
+      y2: { grid: { display: false }, ticks: { color: '#f59e0b', callback: v => '$'+(v/1000).toFixed(0)+'K' }, position: 'right' }
+    }
+  }
+});
+
+// Category Chart
+new Chart(document.getElementById('catChart'), {
+  type: 'bar',
+  data: {
+    labels: DATA.categories.labels,
+    datasets: [{
+      data: DATA.categories.sales,
+      backgroundColor: ['#4f8ef7','#7c3aed','#22c55e'],
+      borderRadius: 6
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false }, tooltip: {
+      callbacks: { label: ctx => ' $' + ctx.parsed.y.toLocaleString() }
+    }},
+    scales: {
+      x: { grid: { display: false }, ticks: { color: tickColor, font: { size: 11 } } },
+      y: { grid: { color: gridColor }, ticks: { color: tickColor, callback: v => '$'+(v/1000).toFixed(0)+'K' } }
+    }
+  }
+});
+
+// Shipping Chart
+new Chart(document.getElementById('shipChart'), {
+  type: 'bar',
+  data: {
+    labels: DATA.shipping.labels,
+    datasets: [{
+      data: DATA.shipping.days,
+      backgroundColor: ['#22c55e','#4f8ef7','#7c3aed','#f59e0b'],
+      borderRadius: 6
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false }, tooltip: {
+      callbacks: { label: ctx => ' ' + ctx.parsed.y + ' days' }
+    }},
+    scales: {
+      x: { grid: { display: false }, ticks: { color: tickColor, font: { size: 10 } } },
+      y: { grid: { color: gridColor }, ticks: { color: tickColor, callback: v => v + 'd' } }
+    }
+  }
+});
+
+// Histogram (margin distribution - simulated)
+const histData = [];
+const histLabels = [];
+for(let i = -100; i <= 100; i += 8) {
+  histLabels.push(i + '%');
+  if(i < -60) histData.push(Math.round(Math.random()*15+5));
+  else if(i < 0) histData.push(Math.round(Math.random()*80+20));
+  else if(i < 20) histData.push(Math.round(Math.random()*300+200));
+  else if(i < 60) histData.push(Math.round(Math.random()*150+50));
+  else histData.push(Math.round(Math.random()*30+5));
+}
+
+new Chart(document.getElementById('histChart'), {
+  type: 'bar',
+  data: {
+    labels: histLabels,
+    datasets: [{
+      data: histData,
+      backgroundColor: histData.map((_,i) => i < 7 ? 'rgba(239,68,68,0.7)' : 'rgba(79,142,247,0.7)'),
+      borderRadius: 2
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { display: false }, ticks: { color: tickColor, maxTicksLimit: 6, font: { size: 10 } } },
+      y: { grid: { color: gridColor }, ticks: { color: tickColor } }
+    }
+  }
+});
+
+// ─── CUSTOMER TABLE ───────────────────────────────────────────────────────────
+function renderTable() {
+  const tbody = document.getElementById('customerTable');
+  const colors = ['#f59e0b','#8892b0','#7c3aed','#4f8ef7','#22c55e','#4f8ef7','#4f8ef7','#4f8ef7','#4f8ef7','#4f8ef7'];
+  const maxRev = DATA.customers[0].revenue;
+  tbody.innerHTML = DATA.customers.map((c, i) => `
+    <tr>
+      <td><span class="rank-badge" style="background:${colors[i]}22;color:${colors[i]}">${i+1}</span></td>
+      <td style="font-weight:500">${c.name}</td>
+      <td style="font-family:'DM Mono',monospace;color:#4f8ef7">$${c.revenue.toLocaleString('en-US',{minimumFractionDigits:2})}</td>
+      <td style="color:#8892b0">${c.orders}</td>
+      <td>
+        <div class="profit-bar-wrap">
+          <div class="profit-bar" style="width:${(c.revenue/maxRev*120).toFixed(0)}px;background:linear-gradient(90deg,#4f8ef7,#7c3aed)"></div>
+          <span style="font-size:12px;color:#8892b0;font-family:'DM Mono',monospace">$${(c.profit/1000).toFixed(1)}K</span>
+        </div>
+      </td>
+    </tr>
+  `).join('');
+}
+renderTable();
+
+// ─── FILTER LOGIC ─────────────────────────────────────────────────────────────
+function filterYear(year, btn) {
+  document.querySelectorAll('.filters .filter-btn').forEach(b => {
+    if(['All Years','2014','2015','2016','2017'].includes(b.textContent)) b.classList.remove('active');
+  });
+  btn.classList.add('active');
+  currentYear = year;
+  updateDashboard();
+}
+
+function filterCat(cat, btn) {
+  document.querySelectorAll('.filters .filter-btn').forEach(b => {
+    if(['All','Furniture','Office Supplies','Technology'].includes(b.textContent)) b.classList.remove('active');
+  });
+  btn.classList.add('active');
+  currentCat = cat;
+  updateDashboard();
+}
+
+function updateDashboard() {
+  const yData = {
+    sales:  { all: 2297200.87, '2014': 484247.50, '2015': 470532.51, '2016': 609205.60, '2017': 733215.26 },
+    profit: { all: 286397.01,  '2014': 49543.97,  '2015': 61618.60,  '2016': 81795.17,  '2017': 93439.27 },
+    orders: { all: 5009,       '2014': 1165,       '2015': 1214,      '2016': 1397,      '2017': 1687 }
+  };
+
+  const s = yData.sales[currentYear];
+  const p = yData.profit[currentYear];
+  const o = yData.orders[currentYear];
+  const m = ((p/s)*100).toFixed(1);
+
+  document.getElementById('kpi-sales').textContent   = s >= 1e6 ? '$' + (s/1e6).toFixed(2) + 'M' : '$' + (s/1000).toFixed(1) + 'K';
+  document.getElementById('kpi-profit').textContent  = p >= 1e6 ? '$' + (p/1e6).toFixed(2) + 'M' : '$' + (p/1000).toFixed(1) + 'K';
+  document.getElementById('kpi-orders').textContent  = o.toLocaleString();
+  document.getElementById('kpi-margin').textContent  = m + '%';
+
+  // Update line chart data
+  const monthlyKey = currentYear === 'all' ? 'all' : currentYear;
+  const newData = DATA.monthly[monthlyKey] || DATA.monthly.all;
+  const newLabels = currentYear === 'all'
+    ? ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec',
+       'Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec',
+       'Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec',
+       'Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+    : ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+  lineChart.data.labels = newLabels;
+  lineChart.data.datasets[0].data = newData;
+  lineChart.update();
+}
+</script>
+</body>
+</html>
